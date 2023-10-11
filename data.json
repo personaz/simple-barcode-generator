@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "nama_produk": "Barang 1",
+      "kode": "TEST-150 JJ",
+      "format": "%012d",
+      "last_barcode": 0
+    },
+    {
+      "nama_produk": "Barang 2",
+      "kode": "ITEM-X20 Pro",
+      "format": "%09d",
+      "last_barcode": 0
+    }
+  ]
+}

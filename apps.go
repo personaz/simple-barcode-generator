@@ -9,6 +9,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/fogleman/gg"
 	"github.com/makiuchi-d/gozxing"
@@ -22,13 +23,17 @@ type Apps struct {
 	window fyne.Window
 }
 
-func (apps *Apps) getJsonPath() string {
+func (apps *Apps) getPath() string {
 	// exec, err := os.Executable()
 	exec, err := os.Getwd()
-
 	if err != nil {
 		panic("Gagal jalankan Applikasi")
 	}
+	return exec
+}
+
+func (apps *Apps) getJsonPath() string {
+	exec := apps.getPath()
 	return filepath.Join(exec, "data.json")
 }
 
@@ -78,18 +83,24 @@ func (apps *Apps) Start() {
 			{Text: "Barcode Hingga", Widget: entryUntil},
 		},
 		OnSubmit: func() {
-			item := apps.getProduct(selCode.SelectedIndex())
-			from := item.LastBarcode + 1
-			until, err := strconv.Atoi(entryUntil.Text)
-			if err != nil {
-				panic("Barcode Hingga tidak diketahui")
-			}
-			for i := from; i <= until; i++ {
-				code := fmt.Sprintf(item.Format, i)
-				apps.generateImage(item, code)
-			}
-			apps.model.Items[selCode.SelectedIndex()].LastBarcode = until
-			apps.saveModelJson()
+			saveDialog := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
+				if err == nil && lu != nil {
+					savePath := lu.Path()
+					item := apps.getProduct(selCode.SelectedIndex())
+					from := item.LastBarcode + 1
+					until, err := strconv.Atoi(entryUntil.Text)
+					if err != nil {
+						panic("Barcode Hingga tidak diketahui")
+					}
+					for i := from; i <= until; i++ {
+						code := fmt.Sprintf(item.Format, i)
+						apps.generateImage(item, code, savePath)
+					}
+					apps.model.Items[selCode.SelectedIndex()].LastBarcode = until
+					apps.saveModelJson()
+				}
+			}, apps.window)
+			saveDialog.Show()
 		},
 	}
 	apps.window.SetContent(form)
@@ -116,7 +127,7 @@ func (apps *Apps) generateBarcode(code string) *gozxing.BitMatrix {
 	return barcode
 }
 
-func (apps *Apps) generateImage(item Item, code string) {
+func (apps *Apps) generateImage(item Item, code string, savePath string) {
 	width, height := 300, 160
 	barcode := apps.generateBarcode(code)
 	dc := gg.NewContext(width, height)
@@ -130,8 +141,9 @@ func (apps *Apps) generateImage(item Item, code string) {
 	dc.DrawImageAnchored(barcode, width/2, barcode.GetHeight(), 0.5, 0)
 	dc.DrawStringAnchored(code, float64(width/2), float64(barcode.GetHeight()+46), 0.5, 1)
 	filename := fmt.Sprintf("%s-%s.jpg", item.Code, code)
+	saveDir := filepath.Join(savePath, filename)
 	dc.Clip()
-	dc.SavePNG(filename)
+	dc.SavePNG(saveDir)
 }
 
 func NewApps() Apps {
